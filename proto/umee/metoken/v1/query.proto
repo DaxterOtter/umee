@@ -1,0 +1,50 @@
+syntax = "proto3";
+package umeenetwork.umee.metoken.v1;
+
+import "google/api/annotations.proto";
+import "gogoproto/gogo.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "umee/metoken/v1/metoken.proto";
+
+option go_package = "github.com/umee-network/umee/v4/x/metoken";
+
+option (gogoproto.goproto_getters_all) = false;
+
+// Query defines the gRPC querier service.
+service Query {
+  // Params queries the parameters of the x/metoken module.
+  rpc Params(QueryParams) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/umee/metoken/v1/params";
+  }
+
+  // RegisteredIndexes queries for all the registered indexes.
+  rpc RegisteredIndexes(QueryRegisteredIndexes)
+      returns (QueryRegisteredIndexesResponse) {
+    option (google.api.http).get = "/umee/metoken/v1/registered_indexes";
+  }
+
+  //todo: include a query for exchange_rates
+  //todo: include a query with index balances and reserves
+}
+
+// QueryParams defines the request structure for the Params gRPC service
+// handler.
+message QueryParams {}
+
+// QueryParamsResponse defines the response structure for the Params gRPC
+// service handler.
+message QueryParamsResponse {
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryRegisteredIndexes defines the request structure for the RegisteredIndexes
+// gRPC service handler.
+message QueryRegisteredIndexes {
+  string metoken_denom = 1;
+}
+
+// QueryRegisteredIndexesResponse defines the response structure for the
+// RegisteredIndexes gRPC service handler.
+message QueryRegisteredIndexesResponse {
+  repeated Index registry = 1 [(gogoproto.nullable) = false];
+}

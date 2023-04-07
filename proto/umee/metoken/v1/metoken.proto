@@ -1,0 +1,59 @@
+syntax = "proto3";
+package umeenetwork.umee.metoken.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/umee-network/umee/v4/x/metoken";
+
+// Params defines the parameters for the metoken module.
+message Params {
+  option (gogoproto.equal) = true;
+}
+
+// Index defines an index of assets that are allowed to swap and redeem for the index's Token,
+// along with its metadata and parameters.
+message Index {
+  option (gogoproto.equal) = true;
+
+  // Metoken Denom is the denomination of the Index's Token denom that will be given to user in exchange of accepted
+  // stable coins.
+  string metoken_denom = 1;
+
+  // Max Incentivizing Displacement is the maximum displacement that can be applied to the original exchange rate.
+  // It's used when the Denom Incentivizing Displacement is calculated for incentivizing and decentivizing swaps and
+  // redemptions.
+  // Valid values: 0-1.
+  string max_incentivizing_displacement = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
+
+  // Max Supply is the maximum amount of Index's tokens the protocol can hold.
+  // Adding more supply of the given token to the protocol will return an error.
+  // Must be a non negative value. 0 means that there is no limit.
+  string max_supply = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false
+  ];
+
+  // Accepted Assets is the list of the Tokens that are accepted to swap and redeem for the Index Token.
+  repeated AcceptedAsset accepted_assets = 4 [(gogoproto.nullable) = false];
+}
+
+// AcceptedAsset is an asset that is accepted to participate in the Index's swap and redemption, along with its
+// metadata and parameters
+message AcceptedAsset {
+  option (gogoproto.equal) = true;
+
+  // Asset Denom is the denomination of the underlying asset. Must be the base
+  // denom as registered in the Bank module (so IBC denom for IBC tokens).
+  string asset_denom = 1;
+
+  // Reserve portion is the portion of swapped assets that will be transferred to metoken module as reserves, and the
+  // portion that will be taken from metoken module reserves when a redemption occurs.
+  // Valid values: 0-1.
+  string reserve_portion = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
+}
