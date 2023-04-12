@@ -10,13 +10,13 @@ message Params {
   option (gogoproto.equal) = true;
 }
 
-// Index defines an index of assets that are allowed to swap and redeem for the index's Token,
+// Index defines an index of assets that are allowed to swap and redeem for the Index's meToken,
 // along with its metadata and parameters.
 message Index {
   option (gogoproto.equal) = true;
 
-  // Metoken Denom is the denomination of the Index's Token denom that will be given to user in exchange of accepted
-  // stable coins.
+  // MeToken Denom is the denomination of the Index's meToken denom that will be given to user in exchange of accepted
+  // assets.
   string metoken_denom = 1;
 
   // Max Incentivizing Displacement is the maximum displacement that can be applied to the original exchange rate.
@@ -28,19 +28,19 @@ message Index {
     (gogoproto.nullable)   = false
   ];
 
-  // Max Supply is the maximum amount of Index's tokens the protocol can hold.
-  // Adding more supply of the given token to the protocol will return an error.
+  // MeToken Max Supply is the maximum amount of Index's meTokens can be minted.
+  // A swap that requires to mint more Index's meToken than this value will result in an error.
   // Must be a non negative value. 0 means that there is no limit.
-  string max_supply = 3 [
+  string metoken_max_supply = 3 [
     (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
     (gogoproto.nullable)   = false
   ];
 
-  // Accepted Assets is the list of the Tokens that are accepted to swap and redeem for the Index Token.
+  // Accepted Assets is the list of the Tokens that are accepted to swap and redeem for the Index's meToken.
   repeated AcceptedAsset accepted_assets = 4 [(gogoproto.nullable) = false];
 }
 
-// AcceptedAsset is an asset that is accepted to participate in the Index's swap and redemption, along with its
+// AcceptedAsset is an asset that is accepted to participate in the Index's swaps and redemptions, along with its
 // metadata and parameters
 message AcceptedAsset {
   option (gogoproto.equal) = true;

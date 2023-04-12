@@ -9,14 +9,14 @@ option go_package = "github.com/umee-network/umee/v4/x/metoken";
 
 // GenesisState defines the x/metoken module's genesis state.
 message GenesisState {
-  Params                            params        = 1 [(gogoproto.nullable) = false];
-  repeated Index                    registry      = 2 [(gogoproto.nullable) = false];
-  repeated cosmos.base.v1beta1.Coin sent_leverage = 3 [
+  Params         params                               = 1 [(gogoproto.nullable) = false];
+  repeated Index registry                             = 2 [(gogoproto.nullable) = false];
+  repeated cosmos.base.v1beta1.Coin asset_in_leverage = 3 [
     (gogoproto.nullable)     = false,
     (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
   ];
-  uint64                            next_rebalancing_block = 4;
-  repeated cosmos.base.v1beta1.Coin token_supply           = 5 [
+  uint64   next_rebalancing_block                  = 4;
+  repeated cosmos.base.v1beta1.Coin metoken_supply = 5 [
     (gogoproto.nullable)     = false,
     (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
   ];

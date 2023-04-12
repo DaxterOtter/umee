@@ -17,14 +17,23 @@ service Query {
     option (google.api.http).get = "/umee/metoken/v1/params";
   }
 
-  // RegisteredIndexes queries for all the registered indexes.
+  // RegisteredIndexes queries for a specific or all the registered indexes.
   rpc RegisteredIndexes(QueryRegisteredIndexes)
       returns (QueryRegisteredIndexesResponse) {
     option (google.api.http).get = "/umee/metoken/v1/registered_indexes";
   }
 
-  //todo: include a query for exchange_rates
-  //todo: include a query with index balances and reserves
+  // ExchangeRates queries for exchange rates of a specific or all the registered indexes.
+  rpc ExchangeRates(QueryExchangeRates)
+      returns (QueryExchangeRatesResponse) {
+    option (google.api.http).get = "/umee/metoken/v1/exchange_rates";
+  }
+
+  // IndexLiquidity queries for Index's liquidity of a specific or all the registered indexes.
+  rpc IndexLiquidity(QueryIndexLiquidity)
+      returns (QueryIndexLiquidityResponse) {
+    option (google.api.http).get = "/umee/metoken/v1/index_liquidity";
+  }
 }
 
 // QueryParams defines the request structure for the Params gRPC service
@@ -47,4 +56,46 @@ message QueryRegisteredIndexes {
 // RegisteredIndexes gRPC service handler.
 message QueryRegisteredIndexesResponse {
   repeated Index registry = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryExchangeRates defines the request structure for the ExchangeRates
+// gRPC service handler.
+message QueryExchangeRates {
+  string metoken_denom = 1;
+}
+
+// QueryExchangeRatesResponse defines the response structure for the
+// ExchangeRates gRPC service handler.
+message QueryExchangeRatesResponse {
+  repeated ExchangeRate exchange_rates = 1 [(gogoproto.nullable) = false];
+}
+
+// ExchangeRate defines the structure to be included in the QueryExchangeRatesResponse informing the exchange rate of
+// the Index's meToken by an accepted asset.
+message ExchangeRate {
+  string metoken_denom = 1;
+  string asset_denom   = 2;
+  string exchange_rate = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
+}
+
+// QueryIndexLiquidity defines the request structure for the IndexLiquidity
+// gRPC service handler.
+message QueryIndexLiquidity {
+  string metoken_denom = 1;
+}
+
+// QueryIndexLiquidityResponse defines the response structure for the
+// IndexLiquidity gRPC service handler.
+message QueryIndexLiquidityResponse {
+  repeated IndexLiquidity index_liquidity = 1 [(gogoproto.nullable) = false];
+}
+
+// IndexLiquidity defines the structure for informing the state of an Index in therms of liquidity.
+message IndexLiquidity {
+  cosmos.base.v1beta1.Coin metoken_minted             = 1;
+  repeated cosmos.base.v1beta1.Coin asset_in_leverage = 2;
+  repeated cosmos.base.v1beta1.Coin asset_in_reserves = 3;
 }

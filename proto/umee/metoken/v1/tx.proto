@@ -11,11 +11,11 @@ option go_package = "github.com/umee-network/umee/v4/x/metoken";
 
 // Msg defines the x/metoken module's Msg service.
 service Msg {
-  // Swap defines a method for swapping an accepted asset for Index's token.
+  // Swap defines a method for swapping an accepted asset for Index's meToken.
   rpc Swap(MsgSwap) returns (MsgSwapResponse);
 
-  // Redeem defines a method for redeeming Index's token for an accepted asset.
-  rpc Bond(MsgRedeem) returns (MsgRedeemResponse);
+  // Redeem defines a method for redeeming Index's meToken for an accepted asset.
+  rpc Redeem(MsgRedeem) returns (MsgRedeemResponse);
 
   // GovSetParams is used by governance proposals to update parameters.
   rpc GovSetParams(MsgGovSetParams) returns (MsgGovSetParamsResponse);
@@ -25,35 +25,35 @@ service Msg {
   rpc GovUpdateRegistry(MsgGovUpdateRegistry) returns (MsgGovUpdateRegistryResponse);
 }
 
-// MsgSwap represents a user's request to swap assets for Index's token.
+// MsgSwap represents a user's request to swap assets for Index's meToken.
 message MsgSwap {
   // Recipient is the account address swapping assets and the signer of the message.
-  string                   recipient = 1;
-  cosmos.base.v1beta1.Coin asset     = 2 [(gogoproto.nullable) = false];
-  string metoken_denom               = 3;
+  string                   recipient     = 1;
+  cosmos.base.v1beta1.Coin asset         = 2 [(gogoproto.nullable) = false];
+  string                   metoken_denom = 3;
 }
 
 // MsgSwapResponse defines the Msg/Swap response type.
 message MsgSwapResponse {
   // Received is the amount of accepted asset received from the user.
   cosmos.base.v1beta1.Coin received = 1 [(gogoproto.nullable) = false];
-  // Returned is the amount of Index's token returned to the user.
+  // Returned is the amount of Index's meToken minted and returned to the user.
   cosmos.base.v1beta1.Coin returned = 2 [(gogoproto.nullable) = false];
 }
 
-// MsgRedeem represents a user's request to redeem Index's tokens for one of the accepted assets.
+// MsgRedeem represents a user's request to redeem Index's meTokens for one of the accepted assets.
 message MsgRedeem {
   // Recipient is the account address redeeming assets and the signer of the message.
-  string                   recipient = 1;
-  cosmos.base.v1beta1.Coin metoken   = 2 [(gogoproto.nullable) = false];
-  string asset_denom                 = 3;
+  string                   recipient   = 1;
+  cosmos.base.v1beta1.Coin metoken     = 2 [(gogoproto.nullable) = false];
+  string                   asset_denom = 3;
 }
 
 // MsgRedeemResponse defines the Msg/Redeem response type.
 message MsgRedeemResponse {
   // Returned is the amount of accepted asset returned to the user.
   cosmos.base.v1beta1.Coin returned = 1 [(gogoproto.nullable) = false];
-  // Received is the amount of Index's token received from the user.
+  // Received is the amount of Index's meToken received from the user and burned.
   cosmos.base.v1beta1.Coin received = 2 [(gogoproto.nullable) = false];
 }
 
