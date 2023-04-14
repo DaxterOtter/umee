@@ -37,8 +37,10 @@ message MsgSwap {
 message MsgSwapResponse {
   // Received is the amount of accepted asset received from the user.
   cosmos.base.v1beta1.Coin received = 1 [(gogoproto.nullable) = false];
+  // Fee is the amount of accepted asset charged to the user as the fee for the transaction.
+  cosmos.base.v1beta1.Coin fee = 2 [(gogoproto.nullable) = false];
   // Returned is the amount of Index's meToken minted and returned to the user.
-  cosmos.base.v1beta1.Coin returned = 2 [(gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin returned = 3 [(gogoproto.nullable) = false];
 }
 
 // MsgRedeem represents a user's request to redeem Index's meTokens for one of the accepted assets.
@@ -53,8 +55,10 @@ message MsgRedeem {
 message MsgRedeemResponse {
   // Returned is the amount of accepted asset returned to the user.
   cosmos.base.v1beta1.Coin returned = 1 [(gogoproto.nullable) = false];
+  // Fee is the amount of accepted asset charged to the user as the fee for the transaction.
+  cosmos.base.v1beta1.Coin fee = 2 [(gogoproto.nullable) = false];
   // Received is the amount of Index's meToken received from the user and burned.
-  cosmos.base.v1beta1.Coin received = 2 [(gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin received = 3 [(gogoproto.nullable) = false];
 }
 
 // MsgGovSetParams defines the Msg/GovSetParams request type.
@@ -78,7 +82,16 @@ message MsgGovUpdateRegistry {
   repeated Index add_index = 4 [(gogoproto.nullable) = false];
   // update_index defines the new settings for existing index.
   repeated Index update_index = 5 [(gogoproto.nullable) = false];
+  // update_index defines the new settings for existing index.
+  repeated AssetToDelete delete_asset = 6 [(gogoproto.nullable) = false];
 }
 
 // MsgGovUpdateRegistryResponse defines the Msg/GovUpdateRegistry response type.
 message MsgGovUpdateRegistryResponse {}
+
+// AssetToDelete is an accepted asset to be deleted from an Index. After the deletion the asset cannot be swapped or
+// redeemed by the Index meToken.
+message AssetToDelete {
+  string metoken_denom = 1;
+  string delete_asset  = 2;
+}

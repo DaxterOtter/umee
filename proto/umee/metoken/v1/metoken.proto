@@ -19,25 +19,53 @@ message Index {
   // assets.
   string metoken_denom = 1;
 
-  // Max Incentivizing Displacement is the maximum displacement that can be applied to the original exchange rate.
-  // It's used when the Denom Incentivizing Displacement is calculated for incentivizing and decentivizing swaps and
-  // redemptions.
-  // Valid values: 0-1.
-  string max_incentivizing_displacement = 2 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
-
   // MeToken Max Supply is the maximum amount of Index's meTokens can be minted.
   // A swap that requires to mint more Index's meToken than this value will result in an error.
   // Must be a non negative value. 0 means that there is no limit.
-  string metoken_max_supply = 3 [
+  string metoken_max_supply = 2 [
     (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
     (gogoproto.nullable)   = false
   ];
 
+  // IndexType defines the Index Type: stable or non-stable
+  string index_type = 3 [(gogoproto.nullable) = false];
+
+  // Fee are fee parameters used for swap and redemption fee calculations.
+  Fee fee = 4 [(gogoproto.nullable) = false];
+
   // Accepted Assets is the list of the Tokens that are accepted to swap and redeem for the Index's meToken.
-  repeated AcceptedAsset accepted_assets = 4 [(gogoproto.nullable) = false];
+  repeated AcceptedAsset accepted_assets = 5 [(gogoproto.nullable) = false];
+}
+
+// Fee are the parameters used for the calculation of the fee to be applied for swaps and redemptions and charged to
+// the user.
+message Fee {
+  option (gogoproto.equal) = true;
+
+  // Min fee is the minimum fee to be charged to the user. The applied fee will tend to decrease down to this value,
+  // when the accepted asset is undersupplied in the index. It must be less than Balanced and Max fees.
+  // Valid values: 0-∞.
+  string min_fee = 1 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
+
+  // Balanced fee is the fee to be charged to the user when the index is balanced. It must be greater than min_fee and
+  // lower than max_fee
+  // Valid values: > 0.
+  string balanced_fee = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
+
+  // Max fee is the maximum fee to be charged to the user. The applied fee will tend to increase up to this value,
+  // when the accepted asset is oversupplied in the index. It must be greater than Min and Balanced fee. If the value
+  // is 0, no Max fee will be applied.
+  // Valid values: 0-∞.
+  string max_fee = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = false
+  ];
 }
 
 // AcceptedAsset is an asset that is accepted to participate in the Index's swaps and redemptions, along with its
@@ -55,5 +83,13 @@ message AcceptedAsset {
   string reserve_portion = 2 [
     (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
     (gogoproto.nullable)   = false
+  ];
+
+  // Target allocation is the portion of an accepted asset the Index is targeting to have. This value will be
+  // calculated in the addition and the update of an Index, as well as when an asset is deleted from it. The value
+  // would be 1/amount of assets in the Index.
+  string target_allocation = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable)   = true
   ];
 }
