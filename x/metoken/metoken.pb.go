@@ -67,17 +67,16 @@ type Index struct {
 	// MeToken Denom is the denomination of the Index's meToken denom that will be given to user in exchange of accepted
 	// assets.
 	MetokenDenom string `protobuf:"bytes,1,opt,name=metoken_denom,json=metokenDenom,proto3" json:"metoken_denom,omitempty"`
-	// Max Incentivizing Displacement is the maximum displacement that can be applied to the original exchange rate.
-	// It's used when the Denom Incentivizing Displacement is calculated for incentivizing and decentivizing swaps and
-	// redemptions.
-	// Valid values: 0-1.
-	MaxIncentivizingDisplacement github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,2,opt,name=max_incentivizing_displacement,json=maxIncentivizingDisplacement,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"max_incentivizing_displacement"`
 	// MeToken Max Supply is the maximum amount of Index's meTokens can be minted.
 	// A swap that requires to mint more Index's meToken than this value will result in an error.
 	// Must be a non negative value. 0 means that there is no limit.
-	MetokenMaxSupply github_com_cosmos_cosmos_sdk_types.Int `protobuf:"bytes,3,opt,name=metoken_max_supply,json=metokenMaxSupply,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"metoken_max_supply"`
+	MetokenMaxSupply github_com_cosmos_cosmos_sdk_types.Int `protobuf:"bytes,2,opt,name=metoken_max_supply,json=metokenMaxSupply,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"metoken_max_supply"`
+	// IndexType defines the Index Type: stable or non-stable
+	IndexType string `protobuf:"bytes,3,opt,name=index_type,json=indexType,proto3" json:"index_type,omitempty"`
+	// Fee are fee parameters used for swap and redemption fee calculations.
+	Fee Fee `protobuf:"bytes,4,opt,name=fee,proto3" json:"fee"`
 	// Accepted Assets is the list of the Tokens that are accepted to swap and redeem for the Index's meToken.
-	AcceptedAssets []AcceptedAsset `protobuf:"bytes,4,rep,name=accepted_assets,json=acceptedAssets,proto3" json:"accepted_assets"`
+	AcceptedAssets []AcceptedAsset `protobuf:"bytes,5,rep,name=accepted_assets,json=acceptedAssets,proto3" json:"accepted_assets"`
 }
 
 func (m *Index) Reset()         { *m = Index{} }
@@ -120,12 +119,77 @@ func (m *Index) GetMetokenDenom() string {
 	return ""
 }
 
+func (m *Index) GetIndexType() string {
+	if m != nil {
+		return m.IndexType
+	}
+	return ""
+}
+
+func (m *Index) GetFee() Fee {
+	if m != nil {
+		return m.Fee
+	}
+	return Fee{}
+}
+
 func (m *Index) GetAcceptedAssets() []AcceptedAsset {
 	if m != nil {
 		return m.AcceptedAssets
 	}
 	return nil
 }
+
+// Fee are the parameters used for the calculation of the fee to be applied for swaps and redemptions and charged to
+// the user.
+type Fee struct {
+	// Min fee is the minimum fee to be charged to the user. The applied fee will tend to decrease down to this value,
+	// when the accepted asset is undersupplied in the index. It must be less than Balanced and Max fees.
+	// Valid values: 0-∞.
+	MinFee github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,1,opt,name=min_fee,json=minFee,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"min_fee"`
+	// Balanced fee is the fee to be charged to the user when the index is balanced. It must be greater than min_fee and
+	// lower than max_fee
+	// Valid values: > 0.
+	BalancedFee github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,2,opt,name=balanced_fee,json=balancedFee,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"balanced_fee"`
+	// Max fee is the maximum fee to be charged to the user. The applied fee will tend to increase up to this value,
+	// when the accepted asset is oversupplied in the index. It must be greater than Min and Balanced fee. If the value
+	// is 0, no Max fee will be applied.
+	// Valid values: 0-∞.
+	MaxFee github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,3,opt,name=max_fee,json=maxFee,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"max_fee"`
+}
+
+func (m *Fee) Reset()         { *m = Fee{} }
+func (m *Fee) String() string { return proto.CompactTextString(m) }
+func (*Fee) ProtoMessage()    {}
+func (*Fee) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dda977db8ad52437, []int{2}
+}
+func (m *Fee) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Fee) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Fee.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Fee) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Fee.Merge(m, src)
+}
+func (m *Fee) XXX_Size() int {
+	return m.Size()
+}
+func (m *Fee) XXX_DiscardUnknown() {
+	xxx_messageInfo_Fee.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Fee proto.InternalMessageInfo
 
 // AcceptedAsset is an asset that is accepted to participate in the Index's swaps and redemptions, along with its
 // metadata and parameters
@@ -137,13 +201,17 @@ type AcceptedAsset struct {
 	// portion that will be taken from metoken module reserves when a redemption occurs.
 	// Valid values: 0-1.
 	ReservePortion github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,2,opt,name=reserve_portion,json=reservePortion,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"reserve_portion"`
+	// Target allocation is the portion of an accepted asset the Index is targeting to have. This value will be
+	// calculated in the addition and the update of an Index, as well as when an asset is deleted from it. The value
+	// would be 1/amount of assets in the Index.
+	TargetAllocation *github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,3,opt,name=target_allocation,json=targetAllocation,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"target_allocation,omitempty"`
 }
 
 func (m *AcceptedAsset) Reset()         { *m = AcceptedAsset{} }
 func (m *AcceptedAsset) String() string { return proto.CompactTextString(m) }
 func (*AcceptedAsset) ProtoMessage()    {}
 func (*AcceptedAsset) Descriptor() ([]byte, []int) {
-	return fileDescriptor_dda977db8ad52437, []int{2}
+	return fileDescriptor_dda977db8ad52437, []int{3}
 }
 func (m *AcceptedAsset) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -182,38 +250,45 @@ func (m *AcceptedAsset) GetAssetDenom() string {
 func init() {
 	proto.RegisterType((*Params)(nil), "umeenetwork.umee.metoken.v1.Params")
 	proto.RegisterType((*Index)(nil), "umeenetwork.umee.metoken.v1.Index")
+	proto.RegisterType((*Fee)(nil), "umeenetwork.umee.metoken.v1.Fee")
 	proto.RegisterType((*AcceptedAsset)(nil), "umeenetwork.umee.metoken.v1.AcceptedAsset")
 }
 
 func init() { proto.RegisterFile("umee/metoken/v1/metoken.proto", fileDescriptor_dda977db8ad52437) }
 
 var fileDescriptor_dda977db8ad52437 = []byte{
-	// 400 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x52, 0xcd, 0xaa, 0xd3, 0x40,
-	0x14, 0x4e, 0xda, 0x5a, 0x70, 0x6a, 0x5b, 0x09, 0x2e, 0x82, 0x3f, 0x49, 0xa9, 0x20, 0x55, 0xe8,
-	0x84, 0xaa, 0x2b, 0x77, 0xad, 0xdd, 0x74, 0x21, 0x94, 0xb8, 0x10, 0x45, 0x08, 0xd3, 0xe4, 0x10,
-	0x43, 0x3b, 0x33, 0x21, 0x33, 0x8d, 0xa9, 0x2f, 0xa1, 0x8f, 0xe0, 0xe3, 0x74, 0xd9, 0xa5, 0xb8,
-	0x28, 0xda, 0x6e, 0xee, 0x63, 0x5c, 0x26, 0x3f, 0x90, 0x6e, 0x2e, 0xdc, 0xbb, 0x9a, 0x33, 0xdf,
-	0x39, 0xdf, 0x77, 0xce, 0xf9, 0x38, 0xe8, 0xd9, 0x96, 0x02, 0x38, 0x14, 0x24, 0x5f, 0x03, 0x73,
-	0xd2, 0x49, 0x15, 0xe2, 0x38, 0xe1, 0x92, 0x1b, 0x4f, 0x54, 0x9a, 0x81, 0xfc, 0xce, 0x93, 0x35,
-	0x56, 0x31, 0xae, 0xf2, 0xe9, 0xe4, 0xf1, 0xa3, 0x90, 0x87, 0x3c, 0xaf, 0x73, 0x54, 0x54, 0x50,
-	0x86, 0x3d, 0xd4, 0x5e, 0x92, 0x84, 0x50, 0xf1, 0xae, 0x75, 0xf5, 0xdb, 0xd6, 0x87, 0xff, 0x1b,
-	0xe8, 0xde, 0x82, 0x05, 0x90, 0x19, 0xcf, 0x51, 0xb7, 0x64, 0x7b, 0x01, 0x30, 0x4e, 0x4d, 0x7d,
-	0xa0, 0x8f, 0xee, 0xbb, 0x0f, 0x4a, 0x70, 0xae, 0x30, 0x43, 0x22, 0x8b, 0x92, 0xcc, 0x8b, 0x98,
-	0x0f, 0x4c, 0x46, 0x69, 0xf4, 0x23, 0x62, 0xa1, 0x17, 0x44, 0x22, 0xde, 0x10, 0x1f, 0x28, 0x30,
-	0x69, 0x36, 0x14, 0x6b, 0x86, 0xf7, 0x47, 0x5b, 0xfb, 0x7b, 0xb4, 0x5f, 0x84, 0x91, 0xfc, 0xb6,
-	0x5d, 0x61, 0x9f, 0x53, 0xc7, 0xe7, 0x82, 0x72, 0x51, 0x3e, 0x63, 0x11, 0xac, 0x1d, 0xb9, 0x8b,
-	0x41, 0xe0, 0x39, 0xf8, 0xee, 0x53, 0x4a, 0xb2, 0x45, 0x5d, 0x74, 0x5e, 0xd3, 0x34, 0xbe, 0x22,
-	0xa3, 0x1a, 0x4d, 0x75, 0x17, 0xdb, 0x38, 0xde, 0xec, 0xcc, 0xe6, 0xad, 0x3b, 0x2d, 0x98, 0x74,
-	0x1f, 0x96, 0x4a, 0x1f, 0x48, 0xf6, 0x31, 0xd7, 0x31, 0x3e, 0xa3, 0x3e, 0xf1, 0x7d, 0x88, 0x25,
-	0x04, 0x1e, 0x11, 0x02, 0xa4, 0x30, 0x5b, 0x83, 0xe6, 0xa8, 0xf3, 0xfa, 0x15, 0xbe, 0xc1, 0x5f,
-	0x3c, 0x2d, 0x39, 0x53, 0x45, 0x99, 0xb5, 0xd4, 0x18, 0x6e, 0x8f, 0xd4, 0xc1, 0xca, 0xe3, 0x9f,
-	0x3a, 0xea, 0x5e, 0x54, 0x1b, 0x36, 0xea, 0xe4, 0x9d, 0x2e, 0x9c, 0x46, 0x39, 0x54, 0xf8, 0xfc,
-	0x09, 0xf5, 0x13, 0x10, 0x90, 0xa4, 0xe0, 0xc5, 0x3c, 0x91, 0x11, 0x67, 0x77, 0x34, 0xb6, 0x57,
-	0xca, 0x2c, 0x0b, 0x95, 0x62, 0xa2, 0xd9, 0xfb, 0xfd, 0xc9, 0xd2, 0x0f, 0x27, 0x4b, 0xff, 0x77,
-	0xb2, 0xf4, 0x5f, 0x67, 0x4b, 0x3b, 0x9c, 0x2d, 0xed, 0xcf, 0xd9, 0xd2, 0xbe, 0xbc, 0xac, 0xe9,
-	0xaa, 0x8d, 0xc7, 0xe5, 0xfa, 0xf9, 0xc7, 0x49, 0xdf, 0x3a, 0x59, 0x75, 0x83, 0xab, 0x76, 0x7e,
-	0x51, 0x6f, 0xae, 0x03, 0x00, 0x00, 0xff, 0xff, 0xd4, 0xb1, 0xab, 0x06, 0xa5, 0x02, 0x00, 0x00,
+	// 486 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x93, 0xcf, 0x6e, 0xd3, 0x40,
+	0x10, 0xc6, 0xb3, 0x71, 0x1a, 0xd4, 0x4d, 0x9b, 0x96, 0x15, 0x07, 0x0b, 0x54, 0x27, 0x2a, 0x12,
+	0x0a, 0x48, 0xb5, 0xd5, 0xc2, 0x01, 0x71, 0x4b, 0xa8, 0x82, 0x7a, 0x40, 0x2a, 0x01, 0x09, 0xf1,
+	0x47, 0xb2, 0x36, 0xf6, 0x10, 0xac, 0x64, 0x77, 0x2d, 0xef, 0x26, 0x38, 0x6f, 0xc1, 0x23, 0xf0,
+	0x30, 0x1c, 0x7a, 0xec, 0x11, 0x71, 0xa8, 0x50, 0x72, 0xe1, 0xc0, 0x81, 0x47, 0x40, 0xbb, 0x5e,
+	0xd3, 0xf6, 0x52, 0x29, 0x39, 0x79, 0x3c, 0x3b, 0xf3, 0xdb, 0xef, 0x1b, 0xcd, 0xe2, 0xbd, 0x29,
+	0x03, 0x08, 0x18, 0x28, 0x31, 0x06, 0x1e, 0xcc, 0x0e, 0xcb, 0xd0, 0x4f, 0x33, 0xa1, 0x04, 0xb9,
+	0xa7, 0x8f, 0x39, 0xa8, 0x2f, 0x22, 0x1b, 0xfb, 0x3a, 0xf6, 0xcb, 0xf3, 0xd9, 0xe1, 0xdd, 0x3b,
+	0x23, 0x31, 0x12, 0xa6, 0x2e, 0xd0, 0x51, 0xd1, 0xb2, 0xdf, 0xc4, 0xf5, 0x53, 0x9a, 0x51, 0x26,
+	0x9f, 0xd5, 0x7e, 0x7f, 0x6b, 0xa1, 0xfd, 0xef, 0x55, 0xbc, 0x71, 0xc2, 0x63, 0xc8, 0xc9, 0x7d,
+	0xbc, 0x6d, 0xbb, 0xc3, 0x18, 0xb8, 0x60, 0x2e, 0x6a, 0xa3, 0xce, 0xe6, 0x60, 0xcb, 0x26, 0x8f,
+	0x75, 0x8e, 0x7c, 0xc4, 0xa4, 0x2c, 0x62, 0x34, 0x0f, 0xe5, 0x34, 0x4d, 0x27, 0x73, 0xb7, 0xaa,
+	0x2b, 0x7b, 0xfe, 0xd9, 0x45, 0xab, 0xf2, 0xf3, 0xa2, 0xf5, 0x60, 0x94, 0xa8, 0xcf, 0xd3, 0xa1,
+	0x1f, 0x09, 0x16, 0x44, 0x42, 0x32, 0x21, 0xed, 0xe7, 0x40, 0xc6, 0xe3, 0x40, 0xcd, 0x53, 0x90,
+	0xfe, 0x09, 0x57, 0x83, 0x5d, 0x4b, 0x7a, 0x49, 0xf3, 0xd7, 0x86, 0x43, 0xf6, 0x30, 0x4e, 0xb4,
+	0x96, 0x50, 0x17, 0xb9, 0x8e, 0xb9, 0x7f, 0xd3, 0x64, 0xde, 0xcc, 0x53, 0x20, 0x4f, 0xb1, 0xf3,
+	0x09, 0xc0, 0xad, 0xb5, 0x51, 0xa7, 0x71, 0xd4, 0xf6, 0x6f, 0x30, 0xef, 0xf7, 0x01, 0x7a, 0x35,
+	0xad, 0x67, 0xa0, 0x5b, 0xc8, 0x3b, 0xbc, 0x43, 0xa3, 0x08, 0x52, 0x05, 0x71, 0x48, 0xa5, 0x04,
+	0x25, 0xdd, 0x8d, 0xb6, 0xd3, 0x69, 0x1c, 0x3d, 0xba, 0x91, 0xd2, 0xb5, 0x3d, 0x5d, 0xdd, 0x62,
+	0x79, 0x4d, 0x7a, 0x35, 0x59, 0x8e, 0xf1, 0x2f, 0xc2, 0x4e, 0x1f, 0x80, 0xbc, 0xc0, 0xb7, 0x58,
+	0xc2, 0x43, 0x2d, 0x13, 0xad, 0x3c, 0x94, 0x63, 0x88, 0x06, 0x75, 0x96, 0x70, 0x0d, 0x7a, 0x85,
+	0xb7, 0x86, 0x74, 0x42, 0x79, 0x04, 0xb1, 0xa1, 0x55, 0xd7, 0xa2, 0x35, 0x4a, 0x46, 0xa9, 0x8d,
+	0xe6, 0x86, 0xe6, 0xac, 0xa9, 0x8d, 0xe6, 0x7d, 0x00, 0x6b, 0xf9, 0x0f, 0xc2, 0xdb, 0xd7, 0x06,
+	0x44, 0x5a, 0xb8, 0x61, 0x86, 0x7b, 0x6d, 0x7f, 0xb0, 0x49, 0x15, 0xdb, 0xf3, 0x16, 0xef, 0x64,
+	0x20, 0x21, 0x9b, 0x41, 0x98, 0x8a, 0x4c, 0x25, 0x82, 0xaf, 0xe9, 0xab, 0x69, 0x31, 0xa7, 0x05,
+	0x85, 0x7c, 0xc0, 0xb7, 0x15, 0xcd, 0x46, 0xa0, 0x42, 0x3a, 0x99, 0x88, 0x88, 0x1a, 0xf4, 0xa5,
+	0x49, 0xb4, 0x02, 0x7a, 0xb7, 0x00, 0x75, 0xff, 0x73, 0x0a, 0xbb, 0xbd, 0xe7, 0x67, 0x0b, 0x0f,
+	0x9d, 0x2f, 0x3c, 0xf4, 0x6b, 0xe1, 0xa1, 0xaf, 0x4b, 0xaf, 0x72, 0xbe, 0xf4, 0x2a, 0x3f, 0x96,
+	0x5e, 0xe5, 0xfd, 0xc3, 0x2b, 0x64, 0xbd, 0x41, 0x07, 0x76, 0x9d, 0xcc, 0x4f, 0x30, 0x7b, 0x12,
+	0xe4, 0xe5, 0xb3, 0x1d, 0xd6, 0xcd, 0x23, 0x7c, 0xfc, 0x2f, 0x00, 0x00, 0xff, 0xff, 0x15, 0x1f,
+	0x73, 0xcf, 0xd8, 0x03, 0x00, 0x00,
 }
 
 func (this *Params) Equal(that interface{}) bool {
@@ -259,10 +334,13 @@ func (this *Index) Equal(that interface{}) bool {
 	if this.MetokenDenom != that1.MetokenDenom {
 		return false
 	}
-	if !this.MaxIncentivizingDisplacement.Equal(that1.MaxIncentivizingDisplacement) {
+	if !this.MetokenMaxSupply.Equal(that1.MetokenMaxSupply) {
 		return false
 	}
-	if !this.MetokenMaxSupply.Equal(that1.MetokenMaxSupply) {
+	if this.IndexType != that1.IndexType {
+		return false
+	}
+	if !this.Fee.Equal(&that1.Fee) {
 		return false
 	}
 	if len(this.AcceptedAssets) != len(that1.AcceptedAssets) {
@@ -272,6 +350,36 @@ func (this *Index) Equal(that interface{}) bool {
 		if !this.AcceptedAssets[i].Equal(&that1.AcceptedAssets[i]) {
 			return false
 		}
+	}
+	return true
+}
+func (this *Fee) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Fee)
+	if !ok {
+		that2, ok := that.(Fee)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.MinFee.Equal(that1.MinFee) {
+		return false
+	}
+	if !this.BalancedFee.Equal(that1.BalancedFee) {
+		return false
+	}
+	if !this.MaxFee.Equal(that1.MaxFee) {
+		return false
 	}
 	return true
 }
@@ -298,6 +406,13 @@ func (this *AcceptedAsset) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.ReservePortion.Equal(that1.ReservePortion) {
+		return false
+	}
+	if that1.TargetAllocation == nil {
+		if this.TargetAllocation != nil {
+			return false
+		}
+	} else if !this.TargetAllocation.Equal(*that1.TargetAllocation) {
 		return false
 	}
 	return true
@@ -356,23 +471,30 @@ func (m *Index) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 				i = encodeVarintMetoken(dAtA, i, uint64(size))
 			}
 			i--
-			dAtA[i] = 0x22
+			dAtA[i] = 0x2a
 		}
+	}
+	{
+		size, err := m.Fee.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintMetoken(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x22
+	if len(m.IndexType) > 0 {
+		i -= len(m.IndexType)
+		copy(dAtA[i:], m.IndexType)
+		i = encodeVarintMetoken(dAtA, i, uint64(len(m.IndexType)))
+		i--
+		dAtA[i] = 0x1a
 	}
 	{
 		size := m.MetokenMaxSupply.Size()
 		i -= size
 		if _, err := m.MetokenMaxSupply.MarshalTo(dAtA[i:]); err != nil {
-			return 0, err
-		}
-		i = encodeVarintMetoken(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x1a
-	{
-		size := m.MaxIncentivizingDisplacement.Size()
-		i -= size
-		if _, err := m.MaxIncentivizingDisplacement.MarshalTo(dAtA[i:]); err != nil {
 			return 0, err
 		}
 		i = encodeVarintMetoken(dAtA, i, uint64(size))
@@ -386,6 +508,59 @@ func (m *Index) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0xa
 	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Fee) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Fee) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Fee) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.MaxFee.Size()
+		i -= size
+		if _, err := m.MaxFee.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintMetoken(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1a
+	{
+		size := m.BalancedFee.Size()
+		i -= size
+		if _, err := m.BalancedFee.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintMetoken(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	{
+		size := m.MinFee.Size()
+		i -= size
+		if _, err := m.MinFee.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintMetoken(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -409,6 +584,18 @@ func (m *AcceptedAsset) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.TargetAllocation != nil {
+		{
+			size := m.TargetAllocation.Size()
+			i -= size
+			if _, err := m.TargetAllocation.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+			i = encodeVarintMetoken(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
 	{
 		size := m.ReservePortion.Size()
 		i -= size
@@ -459,9 +646,13 @@ func (m *Index) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMetoken(uint64(l))
 	}
-	l = m.MaxIncentivizingDisplacement.Size()
-	n += 1 + l + sovMetoken(uint64(l))
 	l = m.MetokenMaxSupply.Size()
+	n += 1 + l + sovMetoken(uint64(l))
+	l = len(m.IndexType)
+	if l > 0 {
+		n += 1 + l + sovMetoken(uint64(l))
+	}
+	l = m.Fee.Size()
 	n += 1 + l + sovMetoken(uint64(l))
 	if len(m.AcceptedAssets) > 0 {
 		for _, e := range m.AcceptedAssets {
@@ -469,6 +660,21 @@ func (m *Index) Size() (n int) {
 			n += 1 + l + sovMetoken(uint64(l))
 		}
 	}
+	return n
+}
+
+func (m *Fee) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = m.MinFee.Size()
+	n += 1 + l + sovMetoken(uint64(l))
+	l = m.BalancedFee.Size()
+	n += 1 + l + sovMetoken(uint64(l))
+	l = m.MaxFee.Size()
+	n += 1 + l + sovMetoken(uint64(l))
 	return n
 }
 
@@ -484,6 +690,10 @@ func (m *AcceptedAsset) Size() (n int) {
 	}
 	l = m.ReservePortion.Size()
 	n += 1 + l + sovMetoken(uint64(l))
+	if m.TargetAllocation != nil {
+		l = m.TargetAllocation.Size()
+		n += 1 + l + sovMetoken(uint64(l))
+	}
 	return n
 }
 
@@ -606,40 +816,6 @@ func (m *Index) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxIncentivizingDisplacement", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMetoken
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthMetoken
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthMetoken
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.MaxIncentivizingDisplacement.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MetokenMaxSupply", wireType)
 			}
 			var stringLen uint64
@@ -672,7 +848,72 @@ func (m *Index) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IndexType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IndexType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Fee", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Fee.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AcceptedAssets", wireType)
 			}
@@ -703,6 +944,158 @@ func (m *Index) Unmarshal(dAtA []byte) error {
 			}
 			m.AcceptedAssets = append(m.AcceptedAssets, AcceptedAsset{})
 			if err := m.AcceptedAssets[len(m.AcceptedAssets)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMetoken(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Fee) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMetoken
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Fee: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Fee: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinFee", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinFee.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BalancedFee", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.BalancedFee.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxFee", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MaxFee.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -819,6 +1212,42 @@ func (m *AcceptedAsset) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.ReservePortion.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetAllocation", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMetoken
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMetoken
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var v github_com_cosmos_cosmos_sdk_types.Dec
+			m.TargetAllocation = &v
+			if err := m.TargetAllocation.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

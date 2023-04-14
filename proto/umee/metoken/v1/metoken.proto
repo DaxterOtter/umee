@@ -28,7 +28,7 @@ message Index {
   ];
 
   // IndexType defines the Index Type: stable or non-stable
-  string index_type = 3 [(gogoproto.nullable) = false];
+  string index_type = 3;
 
   // Fee are fee parameters used for swap and redemption fee calculations.
   Fee fee = 4 [(gogoproto.nullable) = false];
