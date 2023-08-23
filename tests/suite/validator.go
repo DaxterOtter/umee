@@ -1,4 +1,4 @@
-package setup
+package suite
 
 import (
 	"encoding/json"
@@ -29,31 +29,31 @@ import (
 	appparams "github.com/umee-network/umee/v6/app/params"
 )
 
-type validator struct {
-	chain        *chain
-	index        int
-	moniker      string
-	mnemonic     string
+type Validator struct {
+	Chain        *SimpleChain
+	Index        int
+	Moniker      string
+	Mnemonic     string
 	KeyInfo      keyring.Record
 	privateKey   cryptotypes.PrivKey
 	consensusKey privval.FilePVKey
-	nodeKey      p2p.NodeKey
+	NodeKey      p2p.NodeKey
 }
 
-func (v *validator) instanceName() string {
-	return fmt.Sprintf("%s%d", v.moniker, v.index)
+func (v *Validator) InstanceName() string {
+	return fmt.Sprintf("%s%d", v.Moniker, v.Index)
 }
 
-func (v *validator) configDir() string {
-	return fmt.Sprintf("%s/%s", v.chain.configDir(), v.instanceName())
+func (v *Validator) ConfigDir() string {
+	return fmt.Sprintf("%s/%s", v.Chain.ConfigDir(), v.InstanceName())
 }
 
-func (v *validator) createConfig() error {
-	p := path.Join(v.configDir(), "config")
+func (v *Validator) createConfig() error {
+	p := path.Join(v.ConfigDir(), "config")
 	return os.MkdirAll(p, 0o755)
 }
 
-func (v *validator) init(cdc codec.Codec) error {
+func (v *Validator) init(cdc codec.Codec) error {
 	if err := v.createConfig(); err != nil {
 		return err
 	}
@@ -61,10 +61,10 @@ func (v *validator) init(cdc codec.Codec) error {
 	serverCtx := server.NewDefaultContext()
 	config := serverCtx.Config
 
-	config.SetRoot(v.configDir())
-	config.Moniker = v.moniker
+	config.SetRoot(v.ConfigDir())
+	config.Moniker = v.Moniker
 
-	genDoc, err := getGenDoc(v.configDir())
+	genDoc, err := getGenDoc(v.ConfigDir())
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (v *validator) init(cdc codec.Codec) error {
 		return fmt.Errorf("failed to JSON encode app genesis state: %w", err)
 	}
 
-	genDoc.ChainID = v.chain.ID
+	genDoc.ChainID = v.Chain.ID
 	genDoc.Validators = nil
 	genDoc.AppState = appState
 
@@ -86,28 +86,28 @@ func (v *validator) init(cdc codec.Codec) error {
 	return nil
 }
 
-func (v *validator) createNodeKey() error {
+func (v *Validator) createNodeKey() error {
 	serverCtx := server.NewDefaultContext()
 	config := serverCtx.Config
 
-	config.SetRoot(v.configDir())
-	config.Moniker = v.moniker
+	config.SetRoot(v.ConfigDir())
+	config.Moniker = v.Moniker
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return err
 	}
 
-	v.nodeKey = *nodeKey
+	v.NodeKey = *nodeKey
 	return nil
 }
 
-func (v *validator) createConsensusKey() error {
+func (v *Validator) createConsensusKey() error {
 	serverCtx := server.NewDefaultContext()
 	config := serverCtx.Config
 
-	config.SetRoot(v.configDir())
-	config.Moniker = v.moniker
+	config.SetRoot(v.ConfigDir())
+	config.Moniker = v.Moniker
 
 	pvKeyFile := config.PrivValidatorKeyFile()
 	if err := tmos.EnsureDir(filepath.Dir(pvKeyFile), 0o777); err != nil {
@@ -125,8 +125,8 @@ func (v *validator) createConsensusKey() error {
 	return nil
 }
 
-func (v *validator) createKeyFromMnemonic(cdc codec.Codec, name, mnemonic string) error {
-	kb, err := keyring.New(keyringAppName, keyring.BackendTest, v.configDir(), nil, cdc)
+func (v *Validator) createKeyFromMnemonic(cdc codec.Codec, name, mnemonic string) error {
+	kb, err := keyring.New(keyringAppName, keyring.BackendTest, v.ConfigDir(), nil, cdc)
 	if err != nil {
 		return err
 	}
@@ -153,14 +153,14 @@ func (v *validator) createKeyFromMnemonic(cdc codec.Codec, name, mnemonic string
 	}
 
 	v.KeyInfo = *info
-	v.mnemonic = mnemonic
+	v.Mnemonic = mnemonic
 	v.privateKey = privKey
 
 	return nil
 }
 
-func (v *validator) createKey(cdc codec.Codec, name string) error {
-	mnemonic, err := createMnemonic()
+func (v *Validator) createKey(cdc codec.Codec, name string) error {
+	mnemonic, err := CreateMnemonic()
 	if err != nil {
 		return err
 	}
@@ -168,15 +168,15 @@ func (v *validator) createKey(cdc codec.Codec, name string) error {
 	return v.createKeyFromMnemonic(cdc, name, mnemonic)
 }
 
-func (v *validator) buildCreateValidatorMsg(amount sdk.Coin) (sdk.Msg, error) {
-	description := stakingtypes.NewDescription(v.moniker, "", "", "", "")
+func (v *Validator) BuildCreateValidatorMsg(amount sdk.Coin) (sdk.Msg, error) {
+	description := stakingtypes.NewDescription(v.Moniker, "", "", "", "")
 	commissionRates := stakingtypes.CommissionRates{
 		Rate:          sdk.MustNewDecFromStr("0.1"),
 		MaxRate:       sdk.MustNewDecFromStr("0.2"),
 		MaxChangeRate: sdk.MustNewDecFromStr("0.01"),
 	}
 
-	// get the initial validator min self delegation
+	// get the initial Validator min self delegation
 	minSelfDelegation, _ := sdk.NewIntFromString("1")
 
 	valPubKey, err := cryptocodec.FromTmPubKeyInterface(v.consensusKey.PubKey)
@@ -198,19 +198,19 @@ func (v *validator) buildCreateValidatorMsg(amount sdk.Coin) (sdk.Msg, error) {
 	)
 }
 
-func (v *validator) signMsg(cdc codec.Codec, msgs ...sdk.Msg) (*sdktx.Tx, error) {
-	txBuilder := encodingConfig.TxConfig.NewTxBuilder()
+func (v *Validator) SignMsg(cdc codec.Codec, msgs ...sdk.Msg) (*sdktx.Tx, error) {
+	txBuilder := EncodingConfig.TxConfig.NewTxBuilder()
 
 	if err := txBuilder.SetMsgs(msgs...); err != nil {
 		return nil, err
 	}
 
-	txBuilder.SetMemo(fmt.Sprintf("%s@%s:26656", v.nodeKey.ID(), v.instanceName()))
+	txBuilder.SetMemo(fmt.Sprintf("%s@%s:26656", v.NodeKey.ID(), v.InstanceName()))
 	txBuilder.SetFeeAmount(sdk.NewCoins())
 	txBuilder.SetGasLimit(appparams.DefaultGasLimit)
 
 	signerData := authsigning.SignerData{
-		ChainID:       v.chain.ID,
+		ChainID:       v.Chain.ID,
 		AccountNumber: 0,
 		Sequence:      0,
 	}
@@ -240,7 +240,7 @@ func (v *validator) signMsg(cdc codec.Codec, msgs ...sdk.Msg) (*sdktx.Tx, error)
 		return nil, err
 	}
 
-	bytesToSign, err := encodingConfig.TxConfig.SignModeHandler().GetSignBytes(
+	bytesToSign, err := EncodingConfig.TxConfig.SignModeHandler().GetSignBytes(
 		txsigning.SignMode_SIGN_MODE_DIRECT,
 		signerData,
 		txBuilder.GetTx(),
@@ -267,7 +267,7 @@ func (v *validator) signMsg(cdc codec.Codec, msgs ...sdk.Msg) (*sdktx.Tx, error)
 	}
 
 	signedTx := txBuilder.GetTx()
-	bz, err := encodingConfig.TxConfig.TxEncoder()(signedTx)
+	bz, err := EncodingConfig.TxConfig.TxEncoder()(signedTx)
 	if err != nil {
 		return nil, err
 	}

@@ -5,14 +5,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/go-bip39"
 	appparams "github.com/umee-network/umee/v6/app/params"
+	"github.com/umee-network/umee/v6/tests/suite"
 )
 
 const (
-	PhotonDenom    = "photon"
-	InitBalanceStr = "510000000000" + appparams.BondDenom + ",100000000000" + PhotonDenom
-	GaiaChainID    = "test-gaia-chain"
+	GaiaChainID = "test-gaia-e2eChain"
 
 	EthChainID uint = 15
 	EthMinerPK      = "0xb1bab011e03a9862664706fc3bbaa1b16651528e5f0e7fbfcbfdd8be302a13e7"
@@ -37,22 +35,8 @@ var (
 	ATOMExponent  = 6
 )
 
-func createMnemonic() (string, error) {
-	entropySeed, err := bip39.NewEntropy(256)
-	if err != nil {
-		return "", err
-	}
-
-	mnemonic, err := bip39.NewMnemonic(entropySeed)
-	if err != nil {
-		return "", err
-	}
-
-	return mnemonic, nil
-}
-
 func createMemoryKey(cdc codec.Codec) (mnemonic string, info *keyring.Record, err error) {
-	mnemonic, err = createMnemonic()
+	mnemonic, err = suite.CreateMnemonic()
 	if err != nil {
 		return "", nil, err
 	}
