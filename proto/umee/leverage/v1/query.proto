@@ -362,6 +362,8 @@ message InspectAccount {
   RiskInfo analysis = 2;
   // Collateral and borrowed tokens, denoted in human-readable symbol denom instead of ibc denom.
   DecBalances position = 3;
+  // Info is temporarily being used to print the account's entire position under the new asset pairing logic
+  string info = 4;
 }
 
 // RiskInfo defines a borrower's account health without requiring sdk.Dec formatting.

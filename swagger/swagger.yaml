@@ -370,6 +370,11 @@ paths:
                           description: >-
                             Borrowed contains all tokens the account has
                             borrowed, including interest owed.
+                    info:
+                      type: string
+                      title: >-
+                        Info is temporarily being used to print the account's
+                        entire position under the new asset pairing logic
                   description: >-
                     InspectAccount contains risk and balance info for a single
                     account for the inspector query.
@@ -3580,6 +3585,11 @@ definitions:
             description: >-
               Borrowed contains all tokens the account has borrowed, including
               interest owed.
+      info:
+        type: string
+        title: >-
+          Info is temporarily being used to print the account's entire position
+          under the new asset pairing logic
     description: >-
       InspectAccount contains risk and balance info for a single account for the
       inspector query.
@@ -3884,6 +3894,11 @@ definitions:
                   description: >-
                     Borrowed contains all tokens the account has borrowed,
                     including interest owed.
+            info:
+              type: string
+              title: >-
+                Info is temporarily being used to print the account's entire
+                position under the new asset pairing logic
           description: >-
             InspectAccount contains risk and balance info for a single account
             for the inspector query.

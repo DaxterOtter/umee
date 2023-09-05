@@ -65,11 +65,22 @@ func (q Querier) Inspect(
 		}
 		checkedAddrs[addr.String()] = struct{}{}
 
+		borrowedValue, collateralValue, liquidationThreshold := sdk.ZeroDec(), sdk.ZeroDec(), sdk.ZeroDec()
+		position, err := k.GetAccountPosition(ctx, addr, true)
+		if err == nil {
+			borrowedValue = position.BorrowedValue()
+			collateralValue = position.CollateralValue()
+			liquidationThreshold = position.Limit()
+		} else {
+			// gotta see these
+			return err
+		}
+
 		borrowed := k.GetBorrowerBorrows(ctx, addr)
-		borrowedValue, _ := k.TotalTokenValue(ctx, borrowed, types.PriceModeSpot)
+		// borrowedValue, _ := k.TotalTokenValue(ctx, borrowed, types.PriceModeSpot)
 		collateral := k.GetBorrowerCollateral(ctx, addr)
-		collateralValue, _ := k.CalculateCollateralValue(ctx, collateral, types.PriceModeSpot)
-		liquidationThreshold, _ := k.CalculateLiquidationThreshold(ctx, collateral)
+		// collateralValue, _ := k.CalculateCollateralValue(ctx, collateral, types.PriceModeSpot)
+		// liquidationThreshold, _ := k.CalculateLiquidationThreshold(ctx, collateral)
 
 		account := types.InspectAccount{
 			Address: addr.String(),
@@ -82,6 +93,7 @@ func (q Querier) Inspect(
 				Collateral: symbolDecCoins(collateral, exchangeRates),
 				Borrowed:   symbolDecCoins(borrowed, exchangeRates),
 			},
+			Info: position.String(),
 		}
 		ok := account.Analysis.Borrowed > req.Borrowed
 		ok = ok && account.Analysis.Value > req.Collateral
