@@ -20,7 +20,23 @@ var minimumBorrowFactor = sdk.MustNewDecFromStr("0.5")
 func (k Keeper) GetAccountPosition(ctx sdk.Context, addr sdk.AccAddress, isForLiquidation bool,
 ) (types.AccountPosition, error) {
 	tokenSettings := k.GetAllRegisteredTokens(ctx)
-	specialPairs := []types.SpecialAssetPair{}
+	specialPairs := []types.SpecialAssetPair{
+		// Simulating the presence of special pairs on mainnet state
+		{
+			// stATOM -> ATOM
+			Collateral: "ibc/C8B3026C2844D204F3A49F91058DC947F01F2FC36AFF17850FFC8701504BDDEE",
+			Borrow: "ibc/C4CFF46FD6DE35CA4CF4CE031E643C8FDC9BA4B99AE598E9B0ED98FE3A2319F9",
+			CollateralWeight: sdk.MustNewDecFromStr("0.85"),
+			LiquidationThreshold: sdk.MustNewDecFromStr("0.9"),
+		},
+		{
+			// stOSMO -> OSMO
+			Collateral: "ibc/6B49A789937D4E50BF01F0F50DDEDF5C1103EDF01306B7021BDF23BDE65D99BA",
+			Borrow: "ibc/ED07A3391A112B175915CD8FAF43A2DA8E4790EDE12566649D0C2F97716B8518",
+			CollateralWeight: sdk.MustNewDecFromStr("0.75"),
+			LiquidationThreshold: sdk.MustNewDecFromStr("0.8"),
+		},
+	}
 	collateral := k.GetBorrowerCollateral(ctx, addr)
 	collateralValue := sdk.NewDecCoins()
 	borrowed := k.GetBorrowerBorrows(ctx, addr)
